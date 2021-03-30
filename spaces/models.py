@@ -59,7 +59,7 @@ class SpaceOption(models.Model):
 
 
 class Location(models.Model):
-    space          = models.ForeignKey('spaces.Space', on_delete=models.CASCADE)
+    space          = models.ForeignKey('spaces.Space', on_delete=models.CASCADE, related_name='locations')
     country        = models.ForeignKey('users.Country', on_delete=models.CASCADE)
     region         = models.CharField(max_length=45)
     city           = models.CharField(max_length=20)

@@ -32,16 +32,17 @@ from spaces.models      import (
 )
 from spaces.utils       import login_required, host_required
 from django.core.mail   import EmailMessage
+from decorators         import query_debugger
 
 
 class SpaceListView(View):
+    @query_debugger
     def get(self, request):
         place_type = request.GET.get("type")
         filter_set = {}
         if place_type:
             filter_set["place_type__name"] = place_type
-        spaces = Space.objects.filter(**filter_set)
-            
+        spaces = Space.objects.filter(**filter_set).prefetch_related('locations', 'bedroom_set', 'sub_property', 'sub_property__space_property', 'spaceoption_set', 'spacetag_set', 'spacetag_set__tag', 'image_set', 'image_set')
         page            = int(request.GET.get("page", 1))
         PAGE_SIZE       = 20
         limit           = page * PAGE_SIZE
@@ -52,7 +53,7 @@ class SpaceListView(View):
             "id"                : space.id,
             "name"              : space.name,
             "place_type"        : space.place_type.name,
-            "city"              : [adress.city for adress in space.location_set.all()],
+            "city"              : [adress.city for adress in space.locations.all()],
             "property_name"     : space.sub_property.space_property.name,
             "space_image"       : [image.url for image in space.image_set.all()],
             "max_people"        : space.max_people,
@@ -63,8 +64,8 @@ class SpaceListView(View):
             "rating"            : space.rating,
             "price"             : space.price,
             "space_tag"         : [tag.tag.name for tag in space.spacetag_set.all()],
-            "latitude"          : [adress.latitude for adress in space.location_set.all()][0],
-            "longitude"         : [adress.longitude for adress in space.location_set.all()][0]
+            "latitude"          : [adress.latitude for adress in space.locations.all()][0],
+            "longitude"         : [adress.longitude for adress in space.locations.all()][0]
         } 
         for space in spaces[offset:limit]
         ]
@@ -74,6 +75,7 @@ class SpaceListView(View):
 
 
 class SpaceDetailView(View):
+    @query_debugger
     def get(self, request, space_id):
         try:
             space   = Space.objects.get(id = space_id)
@@ -84,10 +86,10 @@ class SpaceDetailView(View):
             {
                 "id"                : space.id,
                 "name"              : space.name,
-                "address"           : " ".join(map(str,[address.region for address in space.location_set.all()]+
-                                                       [address.city for address in space.location_set.all()]+
-                                                       [address.address for address in space.location_set.all()]+
-                                                       [address.address_detail for address in space.location_set.all()])),
+                "address"           : " ".join(map(str,[address.region for address in space.locations.all()]+
+                                                       [address.city for address in space.locations.all()]+
+                                                       [address.address for address in space.locations.all()]+
+                                                       [address.address_detail for address in space.locations.all()])),
                 "description"       : space.description,
                 "space_image"       : [image.url for image in space.image_set.all()],
                 "host"              : space.host.user.name,
@@ -96,8 +98,8 @@ class SpaceDetailView(View):
                 "max_people"        : space.max_people,
                 "price"             : space.price,
                 "rating"            : space.rating,
-                "latitude"          : [adress.latitude for adress in space.location_set.all()][0],
-                "longitude"         : [adress.longitude for adress in space.location_set.all()][0],
+                "latitude"          : [adress.latitude for adress in space.locations.all()][0],
+                "longitude"         : [adress.longitude for adress in space.locations.all()][0],
                 "bedroom"           : [
                     {
                         "name"         : room.name,
